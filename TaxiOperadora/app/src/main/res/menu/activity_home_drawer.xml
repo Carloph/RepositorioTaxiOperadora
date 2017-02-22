@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <item android:title="Opciones">
+        <menu>
+            <item
+                android:id="@+id/nav_configuration"
+                android:icon="@drawable/ic_configuration"
+                android:title="@string/configuration" />
+            <item
+                android:id="@+id/nav_sign_off"
+                android:icon="@drawable/ic_sign_off"
+
+                android:title="@string/sign_off"/>
+        </menu>
+    </item>
+
+</menu>
