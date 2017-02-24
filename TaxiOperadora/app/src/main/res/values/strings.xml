@@ -7,4 +7,7 @@
     <string name="action_settings">Settings</string>
     <string name="configuration">Configuración</string>
     <string name="sign_off">Cerrar sesión</string>
+    <string name="origin">¿En dónde está?</string>
+    <string name="destination">¿A dónde se dirige?</string>
+    <string name="legend_filter">Escriba la dirección</string>
 </resources>

@@ -1,7 +1,10 @@
 package com.taxioperadora;
 
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
@@ -19,26 +22,40 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.location.LocationListener;
 import android.Manifest;
+
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.taxioperadora.APIChoferes.APIDrivers;
+import com.taxioperadora.APIChoferes.APIListDrivers;
 import com.taxioperadora.APIChoferes.ListDriver;
+import com.taxioperadora.APIChoferes.MyAdapterList;
 import com.taxioperadora.APIChoferes.ObjectDriver;
+import com.taxioperadora.DirectionsMaps.DirectionFinder;
+import com.taxioperadora.DirectionsMaps.DirectionFinderListener;
+import com.taxioperadora.DirectionsMaps.Route;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -46,16 +63,28 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Home extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,LocationListener {
+        implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback,LocationListener, DirectionFinderListener {
 
     private ListView lv_taxis;
 
-    public ArrayList<ObjectDriver> array_drivers;
-    public ArrayList<LatLng> coordenadas;
+    static public ArrayList<ObjectDriver> array_drivers;
+    static public ArrayList<ObjectDriver> array_drivers_availables;
+    private List<Marker> originMarkers = new ArrayList<>();
+    private List<Marker> destinationMarkers = new ArrayList<>();
+    private List<Polyline> polylinePaths = new ArrayList<>();
+    private ProgressDialog progressDialog;
+    private ImageView imvruta;
 
     private GoogleMap mMap;
     public SupportMapFragment mapFragment;
     private LocationManager locationManager;
+
+    private Button btn_origin,btn_destination;
+
+    private final static int  CODE_ORIGIN = 1;
+    private final static int  CODE_DESTINATION = 2;
+    public static String coordinates_origin="";
+    public static String coordinates_destination="";
 
 
 
@@ -64,10 +93,11 @@ public class Home extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+        try {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        try {
+
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -77,13 +107,29 @@ public class Home extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        String values[] = new String[]{"Uno","Dos","Tres","Cuatro","Cinco","Seis","Siete","Ocho","Nueve"};
-
+        btn_origin = (Button) findViewById(R.id.button_origin);
+        btn_destination = (Button) findViewById(R.id.button_destination);
         lv_taxis = (ListView) findViewById(R.id.list_view_inside_nav);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,android.R.layout.simple_list_item_1, values);
 
-        lv_taxis.setAdapter(adapter);
+
+        btn_origin.setOnClickListener(new View.OnClickListener() {
+             @Override
+             public void onClick(View v) {
+                 Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
+                 intent_filter.putExtra("CODE",CODE_ORIGIN);
+                 startActivityForResult(intent_filter,CODE_ORIGIN);
+                }
+        });
+
+        btn_destination.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                 Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
+                 intent_filter.putExtra("CODE",CODE_DESTINATION);
+                 startActivityForResult(intent_filter,CODE_DESTINATION);
+            }
+        });
 
         lv_taxis.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -91,8 +137,6 @@ public class Home extends AppCompatActivity
                 Toast.makeText(getApplication(),"Esta es la posición del list"+position,Toast.LENGTH_LONG).show();
             }
         });
-
-
             //Intanciar
             mapFragment
                     = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -114,7 +158,8 @@ public class Home extends AppCompatActivity
             //Hasta aquí
 
             array_drivers = new ArrayList<>();
-            coordenadas = new ArrayList<>();
+            array_drivers_availables = new ArrayList<>();
+
 
 
             final Handler handler = new Handler();
@@ -136,15 +181,24 @@ public class Home extends AppCompatActivity
                                     @Override
                                     public void onResponse(Call<ListDriver> call, Response<ListDriver> response) {
 
-                                        array_drivers.clear();
 
-                                        coordenadas.clear();
 
-                                        array_drivers = response.body().getUbicaciones();
+                                        if(response.isSuccessful()){
 
-                                        mapFragment.getMapAsync(Home.this);
+                                            array_drivers.clear();
+                                            array_drivers = response.body().getUbicaciones();
+                                            mapFragment.getMapAsync(Home.this);
 
-                                        Toast.makeText(getApplication(),"Actualizado",Toast.LENGTH_SHORT).show();
+                                            Log.e("Se ha actualizado"," la ubicacion de todos los taxis");
+
+                                        }else {
+
+                                            Log.e("Hubo un error","al obtener la ubicación de los taxis");
+
+                                            Toast.makeText(getApplication(),"Hubo un error al obtener los datos",Toast.LENGTH_SHORT).show();
+
+                                        }
+
                                     }
 
                                     @Override
@@ -156,22 +210,33 @@ public class Home extends AppCompatActivity
                                 Retrofit retrofitlist =  new Retrofit.Builder().baseUrl("http://easytaxi.pe.hu/")
                                         .addConverterFactory(GsonConverterFactory.create()).build();
 
-                                APIDrivers servicelist=  retrofitlist.create(APIDrivers.class);
+                                APIListDrivers servicelist=  retrofitlist.create(APIListDrivers.class);
                                 Call<ListDriver> calllist = servicelist.getDrivers();
                                 calllist.enqueue(new Callback<ListDriver>() {
 
                                     @Override
                                     public void onResponse(Call<ListDriver> call, Response<ListDriver> response) {
 
-                                        array_drivers.clear();
+                                        if(response.isSuccessful()){
 
-                                        coordenadas.clear();
+                                            array_drivers_availables.clear();
 
-                                        array_drivers = response.body().getUbicaciones();
+                                            array_drivers_availables = response.body().getUbicaciones();
 
-                                        mapFragment.getMapAsync(Home.this);
 
-                                        Toast.makeText(getApplication(),"Actualizado",Toast.LENGTH_SHORT).show();
+                                            MyAdapterList adapter = new MyAdapterList(Home.this,array_drivers_availables);
+
+                                            lv_taxis.setAdapter(adapter);
+
+                                            Log.e("Se ha actualizado"," los taxis disponibles");
+
+                                        }else{
+                                            Log.e("Hubo un error","al obtener los taxis disponibles");
+
+                                            Toast.makeText(getApplication(),"Hubo un error al obtener los datos",Toast.LENGTH_SHORT).show();
+
+                                        }
+
                                     }
 
                                     @Override
@@ -327,4 +392,157 @@ public class Home extends AppCompatActivity
     public void onProviderDisabled(String provider) {
 
     }
+
+    private void sendRequest(String orign,String destin) {
+       // String origin = lat + "," + lng;
+        String origin = orign;
+       // String destination = latitude + "," + longitude;
+        String destination = destin;
+        //String ruta = rut;
+        if (origin.isEmpty()) {
+            Toast.makeText(this, "Por favor ingrese la dirección de origen!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (destination.isEmpty()) {
+            Toast.makeText(this, "Por favor ingrese la dirección de destino!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+       /* if (rut.equals("driving")) {
+            imvruta.setImageDrawable(null);
+            imvruta.setBackgroundResource(R.drawable.);
+        } else {
+            imvruta.setImageDrawable(null);
+            imvruta.setBackgroundResource(R.drawable.ic_action_caminando);
+        }*/
+
+        try {
+            new DirectionFinder(this, origin, destination).execute();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onDirectionFinderStart() {
+
+        progressDialog = ProgressDialog.show(this, "Por favor espere.",
+                "Localizando dirección..!", true);
+
+        if (originMarkers != null) {
+            for (Marker marker : originMarkers) {
+                marker.remove();
+            }
+        }
+
+        if (destinationMarkers != null) {
+            for (Marker marker : destinationMarkers) {
+                marker.remove();
+            }
+        }
+
+        if (polylinePaths != null) {
+            for (Polyline polyline : polylinePaths) {
+                polyline.remove();
+            }
+        }
+
+    }
+
+    @Override
+    public void onDirectionFinderSuccess(List<Route> routes) {
+
+        try {
+            progressDialog.dismiss();
+            polylinePaths = new ArrayList<>();
+            originMarkers = new ArrayList<>();
+            destinationMarkers = new ArrayList<>();
+
+            for (Route route : routes) {
+                // mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(route.startLocation, 13));
+                ((TextView) findViewById(R.id.tvDuration)).setText(route.duration.text);
+                ((TextView) findViewById(R.id.tvDistance)).setText(route.distance.text);
+
+                originMarkers.add(mMap.addMarker(new MarkerOptions()
+           //             .title(nombre)
+                        .position(route.startLocation)));
+                destinationMarkers.add(mMap.addMarker(new MarkerOptions()
+                        .title(route.endAddress)
+                        .position(route.endLocation)));
+
+                PolylineOptions polylineOptions = new PolylineOptions().
+                        geodesic(true).
+                        color(Color.BLUE).
+                        width(10);
+
+                for (int i = 0; i < route.points.size(); i++)
+                    polylineOptions.add(route.points.get(i));
+
+                polylinePaths.add(mMap.addPolyline(polylineOptions));
+            }
+
+            Double origin_lat,origin_lng;
+            Double destination_lat,destination_lng;
+
+            String cadena[] = coordinates_origin.split(",");
+            origin_lat = Double.parseDouble(cadena[0]);
+            origin_lng = Double.parseDouble(cadena[1]);
+
+            String cadena2[] = coordinates_destination.split(",");
+            destination_lat = Double.parseDouble(cadena2[0]);
+            destination_lng = Double.parseDouble(cadena2[1]);
+
+
+
+            LatLng var_origen = new LatLng(origin_lat,origin_lng);
+            LatLng var_destino = new LatLng(destination_lat,destination_lng);
+
+            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            builder.include(var_origen);
+            builder.include(var_destino);
+            LatLngBounds bounds = builder.build();
+
+            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 50);
+            mMap.animateCamera(cu, new GoogleMap.CancelableCallback() {
+                public void onCancel() {
+                }
+
+                public void onFinish() {
+                    CameraUpdate zout = CameraUpdateFactory.zoomBy(-1.0f);
+                    mMap.animateCamera(zout);
+                }
+            });
+
+        } catch (Exception e) {
+            Toast.makeText(getApplication(), "Hubo un error al obtener la ubicación .2" + e, Toast.LENGTH_LONG).show();
+        }
+
+    }
+
+    @Override
+    public void startActivityForResult(int requestCode, int resultCode, Intent data) {
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if(requestCode==CODE_ORIGIN){
+
+            coordinates_origin=data.getExtras().getString("data");
+            String address = data.getExtras().getString("address");
+            btn_origin.setText(address);
+            btn_destination.setEnabled(true);
+
+        }
+        else if(requestCode == CODE_DESTINATION){
+            coordinates_destination=data.getExtras().getString("data");
+            String address = data.getExtras().getString("address");
+            btn_destination.setText(address);
+            sendRequest(coordinates_origin,coordinates_destination);
+
+        }
+    }
+
 }
+
