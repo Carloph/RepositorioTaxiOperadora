@@ -8,10 +8,12 @@ import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -85,9 +87,7 @@ public class Home extends AppCompatActivity
     private final static int  CODE_DESTINATION = 2;
     public static String coordinates_origin="";
     public static String coordinates_destination="";
-
-
-
+    private static int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION=100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,14 +104,29 @@ public class Home extends AppCompatActivity
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
+            if (Build.VERSION.SDK_INT >= 23) {
+                int accessCoarsePermission
+                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
+                int accessFinePermission
+                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_FINE_LOCATION);
+
+                if (accessCoarsePermission != PackageManager.PERMISSION_GRANTED
+                        || accessFinePermission != PackageManager.PERMISSION_GRANTED) {
+                    // The Permissions to ask user.
+                    String[] permissions = new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                            android.Manifest.permission.ACCESS_FINE_LOCATION};
+                    // Show a dialog asking the user to allow the above permissions.
+                    ActivityCompat.requestPermissions(Home.this, permissions,
+                            REQUEST_ID_ACCESS_COURSE_FINE_LOCATION);
+                }
+            }
+
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
         btn_origin = (Button) findViewById(R.id.button_origin);
         btn_destination = (Button) findViewById(R.id.button_destination);
         lv_taxis = (ListView) findViewById(R.id.list_view_inside_nav);
-
-
 
         btn_origin.setOnClickListener(new View.OnClickListener() {
              @Override
