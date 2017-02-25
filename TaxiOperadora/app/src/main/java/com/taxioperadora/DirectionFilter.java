@@ -28,6 +28,8 @@ public class DirectionFilter extends AppCompatActivity implements
 
     private static final String LOG_TAG = "MainActivity";
     private static final int GOOGLE_API_CLIENT_ID = 0;
+    private static final int BACK_PRESSED = 50;
+
     private AutoCompleteTextView mAutocompleteTextView;
 
     private GoogleApiClient mGoogleApiClient;
@@ -139,5 +141,11 @@ public class DirectionFilter extends AppCompatActivity implements
                 "Google Places API connection failed with error code:" +
                         connectionResult.getErrorCode(),
                 Toast.LENGTH_LONG).show();
+    }
+    @Override
+    public void onBackPressed()
+    {
+        setResult(BACK_PRESSED);
+        super.onBackPressed();
     }
 }
