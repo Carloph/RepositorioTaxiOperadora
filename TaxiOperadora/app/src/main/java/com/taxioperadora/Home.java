@@ -22,7 +22,6 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -51,7 +50,6 @@ import com.taxioperadora.APIChoferes.APIService;
 import com.taxioperadora.APIChoferes.ListDriver;
 import com.taxioperadora.APIChoferes.MSG;
 import com.taxioperadora.APIChoferes.ObjectDriver;
-import com.taxioperadora.DirectionsMaps.CustomInfoWindowAdapter;
 import com.taxioperadora.DirectionsMaps.DirectionFinder;
 import com.taxioperadora.DirectionsMaps.DirectionFinderListener;
 import com.taxioperadora.DirectionsMaps.Route;
@@ -91,7 +89,7 @@ public class Home extends AppCompatActivity
     private final static int  CODE_DESTINATION = 2;
     public static String coordinates_origin="";
     public static String coordinates_destination="";
-<<<<<<< HEAD
+
 
     Map<Marker, ObjectDriver> markerMap = new HashMap<Marker, ObjectDriver>();
 
@@ -102,12 +100,11 @@ public class Home extends AppCompatActivity
     Timer t = new Timer();
     public int nCounter = 0;
 
-    private final int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION = 100;
     int id_chofer_general=2;
 
-=======
+
     private static int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION=100;
->>>>>>> origin/master
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -168,14 +165,11 @@ public class Home extends AppCompatActivity
         btn_destination = (Button) findViewById(R.id.button_destination);
         lv_taxis = (ListView) findViewById(R.id.list_view_inside_nav);
 
-<<<<<<< HEAD
         btn_destination.setEnabled(false);
 
 
-            btn_origin.setOnClickListener(new View.OnClickListener() {
-=======
+
         btn_origin.setOnClickListener(new View.OnClickListener() {
->>>>>>> origin/master
              @Override
              public void onClick(View v) {
                  Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
