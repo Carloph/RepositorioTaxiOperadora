@@ -91,6 +91,7 @@ public class Home extends AppCompatActivity
     private final static int  CODE_DESTINATION = 2;
     public static String coordinates_origin="";
     public static String coordinates_destination="";
+<<<<<<< HEAD
 
     Map<Marker, ObjectDriver> markerMap = new HashMap<Marker, ObjectDriver>();
 
@@ -104,6 +105,9 @@ public class Home extends AppCompatActivity
     private final int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION = 100;
     int id_chofer_general=2;
 
+=======
+    private static int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION=100;
+>>>>>>> origin/master
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -140,6 +144,23 @@ public class Home extends AppCompatActivity
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
+            if (Build.VERSION.SDK_INT >= 23) {
+                int accessCoarsePermission
+                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
+                int accessFinePermission
+                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_FINE_LOCATION);
+
+                if (accessCoarsePermission != PackageManager.PERMISSION_GRANTED
+                        || accessFinePermission != PackageManager.PERMISSION_GRANTED) {
+                    // The Permissions to ask user.
+                    String[] permissions = new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                            android.Manifest.permission.ACCESS_FINE_LOCATION};
+                    // Show a dialog asking the user to allow the above permissions.
+                    ActivityCompat.requestPermissions(Home.this, permissions,
+                            REQUEST_ID_ACCESS_COURSE_FINE_LOCATION);
+                }
+            }
+
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
@@ -147,10 +168,14 @@ public class Home extends AppCompatActivity
         btn_destination = (Button) findViewById(R.id.button_destination);
         lv_taxis = (ListView) findViewById(R.id.list_view_inside_nav);
 
+<<<<<<< HEAD
         btn_destination.setEnabled(false);
 
 
             btn_origin.setOnClickListener(new View.OnClickListener() {
+=======
+        btn_origin.setOnClickListener(new View.OnClickListener() {
+>>>>>>> origin/master
              @Override
              public void onClick(View v) {
                  Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
