@@ -133,30 +133,11 @@ public class Home extends AppCompatActivity
 
         }
 
-
-
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
-
-            if (Build.VERSION.SDK_INT >= 23) {
-                int accessCoarsePermission
-                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-                int accessFinePermission
-                        = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_FINE_LOCATION);
-
-                if (accessCoarsePermission != PackageManager.PERMISSION_GRANTED
-                        || accessFinePermission != PackageManager.PERMISSION_GRANTED) {
-                    // The Permissions to ask user.
-                    String[] permissions = new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                            android.Manifest.permission.ACCESS_FINE_LOCATION};
-                    // Show a dialog asking the user to allow the above permissions.
-                    ActivityCompat.requestPermissions(Home.this, permissions,
-                            REQUEST_ID_ACCESS_COURSE_FINE_LOCATION);
-                }
-            }
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
