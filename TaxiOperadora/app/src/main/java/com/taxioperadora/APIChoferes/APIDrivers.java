@@ -16,7 +16,7 @@ import retrofit2.http.GET;
 
 public interface APIDrivers {
 
-    @GET("/obtener_ubicacion_choferes.php")
+    @GET("obtener_ubicacion_choferes.php")
     Call<ListDriver>getDrivers();
 
 }

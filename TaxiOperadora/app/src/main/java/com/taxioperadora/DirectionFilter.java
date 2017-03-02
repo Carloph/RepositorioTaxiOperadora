@@ -148,4 +148,6 @@ public class DirectionFilter extends AppCompatActivity implements
         setResult(BACK_PRESSED);
         super.onBackPressed();
     }
+
+
 }

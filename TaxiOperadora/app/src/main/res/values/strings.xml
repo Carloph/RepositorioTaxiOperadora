@@ -10,4 +10,8 @@
     <string name="origin">¿En dónde está?</string>
     <string name="destination">¿A dónde se dirige?</string>
     <string name="legend_filter">Escriba la dirección</string>
+    <string name="go_topanel">Ir al panel de monitoreo</string>
+    <string name="min">0 min</string>
+    <string name="km">0 km</string>
+    <string name="message">Escribe un mensaje</string>
 </resources>

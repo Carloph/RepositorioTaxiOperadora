@@ -9,12 +9,10 @@ import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -22,11 +20,14 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -56,9 +57,7 @@ import com.taxioperadora.DirectionsMaps.Route;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import retrofit2.Call;
@@ -79,7 +78,7 @@ public class Home extends AppCompatActivity
     private List<Polyline> polylinePaths = new ArrayList<>();
     private ProgressDialog progressDialog;
 
-    private GoogleMap mMap;
+    public GoogleMap mMap;
     public SupportMapFragment mapFragment;
     private LocationManager locationManager;
 
@@ -91,19 +90,12 @@ public class Home extends AppCompatActivity
     public static String coordinates_destination="";
 
 
-    Map<Marker, ObjectDriver> markerMap = new HashMap<Marker, ObjectDriver>();
-
-
-
     TimerTask mTimerTask;
     final Handler handler = new Handler();
     Timer t = new Timer();
     public int nCounter = 0;
 
-    int id_chofer_general=2;
-
-
-    private static int REQUEST_ID_ACCESS_COURSE_FINE_LOCATION=100;
+    public TextView tv_distance,tv_time;
 
 
     @Override
@@ -114,24 +106,6 @@ public class Home extends AppCompatActivity
         try {
             Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
             setSupportActionBar(toolbar);
-
-        if (Build.VERSION.SDK_INT >= 23) {
-            int accessCoarsePermission
-                    = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-            int accessFinePermission
-                    = ContextCompat.checkSelfPermission(Home.this, android.Manifest.permission.ACCESS_FINE_LOCATION);
-
-            if (accessCoarsePermission != PackageManager.PERMISSION_GRANTED
-                    || accessFinePermission != PackageManager.PERMISSION_GRANTED) {
-                // The Permissions to ask user.
-                String[] permissions = new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                        android.Manifest.permission.ACCESS_FINE_LOCATION};
-                // Show a dialog asking the user to allow the above permissions.
-                ActivityCompat.requestPermissions(Home.this, permissions,
-                        REQUEST_ID_ACCESS_COURSE_FINE_LOCATION);
-            }
-
-        }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -145,10 +119,10 @@ public class Home extends AppCompatActivity
         btn_origin = (Button) findViewById(R.id.button_origin);
         btn_destination = (Button) findViewById(R.id.button_destination);
         lv_taxis = (ListView) findViewById(R.id.list_view_inside_nav);
+        tv_distance = (TextView) findViewById(R.id.tvDistance);
+        tv_time = (TextView) findViewById(R.id.tvDuration);
 
         btn_destination.setEnabled(false);
-
-
 
         btn_origin.setOnClickListener(new View.OnClickListener() {
              @Override
@@ -156,16 +130,19 @@ public class Home extends AppCompatActivity
                  Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
                  intent_filter.putExtra("CODE",CODE_ORIGIN);
                  startActivityForResult(intent_filter,CODE_ORIGIN);
+                 stopTask();
                 }
         });
 
         btn_destination.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                 Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
-                 intent_filter.putExtra("CODE",CODE_DESTINATION);
-                 startActivityForResult(intent_filter,CODE_DESTINATION);
-            }
+
+                     Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
+                     intent_filter.putExtra("CODE",CODE_DESTINATION);
+                     startActivityForResult(intent_filter,CODE_DESTINATION);
+                 }
+
         });
 
         lv_taxis.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -217,9 +194,8 @@ public class Home extends AppCompatActivity
         this.mMap = googleMap;
 
         if(array_drivers.isEmpty()){
-
             Toast.makeText(getApplication(),"Cargando taxis",Toast.LENGTH_SHORT).show();
-
+            mMap.clear();
         }else{
             mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -230,14 +206,16 @@ public class Home extends AppCompatActivity
             mMap.clear();
             for (int i= 0;i<array_drivers.size();i++){
 
-                if (array_drivers.get(i).getESTATUS().equals("1")){
+                if(array_drivers.get(i).getESTATUS().equals("0")){
 
+                }
+                else if (array_drivers.get(i).getESTATUS().equals("1")){
 
                   Marker marker_green =
                           mMap.addMarker(new MarkerOptions()
                         .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
                         .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxiverde)));
-                  marker_green.showInfoWindow();
+                  marker_green.hideInfoWindow();
 
                 }else if(array_drivers.get(i).getESTATUS().equals("2")){
 
@@ -245,15 +223,15 @@ public class Home extends AppCompatActivity
                          mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
                             .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxiamarillo)));
-                    marker_yellow.showInfoWindow();
+                    marker_yellow.hideInfoWindow();
 
                 }else if(array_drivers.get(i).getESTATUS().equals("3")){
 
-                    Marker marker_orange =
+                   Marker marker_orange =
                           mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
                             .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxinaranja)));
-                    marker_orange.showInfoWindow();
+                    marker_orange.hideInfoWindow();
 
                 }else if(array_drivers.get(i).getESTATUS().equals("4")){
 
@@ -261,7 +239,7 @@ public class Home extends AppCompatActivity
                            mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
                                    .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxirojo)));
-                    marker_red.showInfoWindow();
+                    marker_red.hideInfoWindow();
 
                 }else{
                     Toast.makeText(getApplication(),"No se encontraron taxis",Toast.LENGTH_SHORT).show();
@@ -284,17 +262,33 @@ public class Home extends AppCompatActivity
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
+
                 doTimerTask();
+                /*if(btn_origin.getText().toString().equals(R.string.origin) || btn_destination.getText().toString().equals(R.string.destination)){
+
+                }else{
+                    btn_origin.setText(R.string.origin);
+                    btn_destination.setText(R.string.destination);
+                    btn_destination.setEnabled(false);
+                }*/
             }
         });
 
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
                 @Override
                 public void onInfoWindowClick(final Marker marker) {
-
                     try {
-
+                        stopTask();
                         AlertDialog.Builder dialog = new AlertDialog.Builder(Home.this);
+
+                        final EditText input = new EditText(Home.this);
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.MATCH_PARENT);
+                        input.setLayoutParams(lp);
+                        dialog.setView(input);
+                        input.setHint("Ingresa un mensaje para el conductor");
+
                         dialog.setCancelable(false);
                         dialog.setTitle("Solicitar viaje");
                         dialog.setMessage("¿Estás seguro de asignar este viaje al taxista?" );
@@ -321,19 +315,25 @@ public class Home extends AppCompatActivity
                                     double destination_lat = Double.parseDouble(var01);
                                     String var02 = split_destination [1];
                                     double destination_lng = Double.parseDouble(var02);
-                                    insert_petition(id_driver,origin_lat,origin_lng,destination_lat,destination_lng);
-                                    doTimerTask();
+                                    String message = input.getText().toString();
+                                    if (message.equals(null) || message.equals("")){
+                                        Toast.makeText(getApplication(),"Para poder enviar la petición escribe un mensaje al conductor",Toast.LENGTH_LONG).show();
+                                    }else{
+                                        insert_petition(id_driver,origin_lat,origin_lng,destination_lat,destination_lng,message);
+                                        doTimerTask();
+                                    }
+
                                 }
 
 
                             }
                         }).setNegativeButton("Cancelar ", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        //Action for "Cancel".
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                //Action for "Cancel".
                                 doTimerTask();
-                                    }
-                                });
+                            }
+                        });
 
                         final AlertDialog alert = dialog.create();
                         alert.show();
@@ -358,6 +358,8 @@ public class Home extends AppCompatActivity
 
        // String destination = latitude + "," + longitude;
         //String ruta = rut;
+        stopTask();
+
         if (orign.isEmpty()) {
             Toast.makeText(this, "Por favor ingrese la dirección de origen!", Toast.LENGTH_SHORT).show();
             return;
@@ -460,7 +462,6 @@ public class Home extends AppCompatActivity
                     mMap.animateCamera(zout);
                 }
             });
-            stopTask();
 
         } catch (Exception e) {
             Toast.makeText(getApplication(), "Hubo un error al obtener la ubicación .2" + e, Toast.LENGTH_LONG).show();
@@ -490,13 +491,13 @@ public class Home extends AppCompatActivity
                 coordinates_destination=data.getExtras().getString("data");
                 String address = data.getExtras().getString("address");
                 btn_destination.setText(address);
-
                 sendRequest(coordinates_origin,coordinates_destination);
 
             }
 
         }else{
             Toast.makeText(getApplicationContext(),"No eligió ningún viaje",Toast.LENGTH_SHORT).show();
+            doTimerTask();
         }
 }
 
@@ -510,7 +511,7 @@ public class Home extends AppCompatActivity
                         // update TextView
 
 
-                        Retrofit retrofit =  new Retrofit.Builder().baseUrl("http://taxa.pe.hu")
+                        Retrofit retrofit =  new Retrofit.Builder().baseUrl("http://seec.com.mx/taxaApp/")
                                 .addConverterFactory(GsonConverterFactory.create()).build();
 
                         APIDrivers service=  retrofit.create(APIDrivers.class);
@@ -562,7 +563,7 @@ public class Home extends AppCompatActivity
             }};
 
         // public void schedule (TimerTask task, long delay, long period)
-        t.schedule(mTimerTask, 0, 30000);  //
+        t.schedule(mTimerTask, 0, 10000);  //
 
     }
 
@@ -576,7 +577,11 @@ public class Home extends AppCompatActivity
         }
 
     }
-
+    @Override
+    public void onPause() {
+        super.onPause();  // Always call the superclass method first
+        stopTask();
+    }
 
     @Override
     public void onBackPressed() {
@@ -631,13 +636,13 @@ public class Home extends AppCompatActivity
         return true;
     }
 
-    public void insert_petition(int id, double var_orig_lat, double var_orig_lng, double var_dest_lat, double var_dest_lng){
+    public void insert_petition(int id, double var_orig_lat, double var_orig_lng, double var_dest_lat, double var_dest_lng, String mensaje){
 
         APIService service = APIClient.getClient().create(APIService.class);
         //User user = new User(name, email, password);
 
 
-        Call<MSG> userCall = service.insertPetition(id, var_orig_lat, var_orig_lng, var_dest_lat, var_dest_lng);
+        Call<MSG> userCall = service.insertPetition(id, var_orig_lat, var_orig_lng, var_dest_lat, var_dest_lng,mensaje);
 
         userCall.enqueue(new Callback<MSG>() {
             @Override
@@ -647,7 +652,13 @@ public class Home extends AppCompatActivity
 
 
                 if(response.body().getSuccess() == 1) {
+                    tv_time.setText("0 min");
+                    tv_distance.setText("0 km");
+                    btn_origin.setText(R.string.origin);
+                    btn_destination.setText(R.string.destination);
                     Log.e("onResponse", "" + "Se ha registrado la solicitud de taxi");
+                    coordinates_origin = "";
+                    coordinates_destination = "";
                     Toast.makeText(getApplicationContext(),"Se ha asignado el viaje al taxi espere el cambio de color",Toast.LENGTH_SHORT).show();
 
                     // startActivity(new Intent(SignupActivity.this, MainActivity.class));
@@ -688,145 +699,3 @@ public class Home extends AppCompatActivity
 
 
 }
-
-/*
-            final Handler handler = new Handler();
-            Timer timer = new Timer();
-
-            TimerTask task = new TimerTask() {
-                @Override
-                public void run() {
-                    handler.post(new Runnable() {
-                        public void run() {
-                            try {
-                                Retrofit retrofit =  new Retrofit.Builder().baseUrl("http://easytaxi.pe.hu/")
-                                        .addConverterFactory(GsonConverterFactory.create()).build();
-
-                                APIDrivers service=  retrofit.create(APIDrivers.class);
-                                Call<ListDriver> calltel = service.getDrivers();
-                                calltel.enqueue(new Callback<ListDriver>() {
-
-                                    @Override
-                                    public void onResponse(Call<ListDriver> call, Response<ListDriver> response) {
-
-
-
-                                        if(response.isSuccessful()){
-
-                                           *//* array_drivers.clear();
-                                            array_drivers = response.body().getUbicaciones();
-                                            mapFragment.getMapAsync(Home.this);*//*
-
-                                            if(array_drivers.isEmpty() || array_drivers.size()!= response.body().getUbicaciones().size() ){
-                                                array_drivers.clear();
-                                                array_drivers = response.body().getUbicaciones();
-                                                mapFragment.getMapAsync(Home.this);
-                                            }else
-                                            {
-                                                for (int i = 0; i<response.body().getUbicaciones().size();i++){
-                                                    array_drivers.get(i).setESTATUS(response.body().getUbicaciones().get(i).getESTATUS());
-                                                    array_drivers.get(i).setLATITUD(response.body().getUbicaciones().get(i).getLATITUD());
-                                                    array_drivers.get(i).setLONGITUD(response.body().getUbicaciones().get(i).getLONGITUD());
-                                                }
-                                                mapFragment.getMapAsync(Home.this);
-                                            }
-
-                                            Log.e("Se ha actualizado"," la ubicacion de todos los taxis");
-
-                                        }else {
-
-                                            Log.e("Hubo un error","al obtener la ubicación de los taxis");
-
-                                            Toast.makeText(getApplication(),"Hubo un error al obtener los datos",Toast.LENGTH_SHORT).show();
-
-                                        }
-
-                                    }
-
-                                    @Override
-                                    public void onFailure(Call<ListDriver> call, Throwable t) {
-                                    }
-                                });
-
-
-                               *//* Retrofit retrofitlist =  new Retrofit.Builder().baseUrl("http://easytaxi.pe.hu/")
-                                        .addConverterFactory(GsonConverterFactory.create()).build();
-
-                                APIListDrivers servicelist=  retrofitlist.create(APIListDrivers.class);
-                                Call<ListDriver> calllist = servicelist.getDrivers();
-                                calllist.enqueue(new Callback<ListDriver>() {
-
-                                    @Override
-                                    public void onResponse(Call<ListDriver> call, Response<ListDriver> response) {
-
-                                        if(response.isSuccessful()){
-
-                                            array_drivers_availables.clear();
-
-                                            array_drivers_availables = response.body().getUbicaciones();
-
-
-                                            MyAdapterList adapter = new MyAdapterList(Home.this,array_drivers_availables);
-
-                                            lv_taxis.setAdapter(adapter);
-
-                                            Log.e("Se ha actualizado"," los taxis disponibles");
-
-                                        }else{
-                                            Log.e("Hubo un error","al obtener los taxis disponibles");
-
-                                            Toast.makeText(getApplication(),"Hubo un error al obtener los datos",Toast.LENGTH_SHORT).show();
-
-                                        }
-
-                                    }
-
-                                    @Override
-                                    public void onFailure(Call<ListDriver> call, Throwable t) {
-                                    }
-                                });*//*
-
-                               } catch (Exception e) {
-                                Log.e("error", e.getMessage());
-                            }
-                        }
-                    });
-                }
-            };
-
-            timer.schedule(task, 0, 60000);*/
-
-
- /* mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
-
-                public View getInfoWindow(Marker arg0) {
-                    View v = getLayoutInflater().inflate(R.layout.custom_infowindow, null);
-                    return v;
-                }
-
-                public View getInfoContents(Marker arg0) {
-
-                    //View v = getLayoutInflater().inflate(R.layout.custom_infowindow, null);
-
-                    return null;
-
-                }
-            });*/
-
-                                            /* array_drivers.clear();
-                                            array_drivers = response.body().getUbicaciones();
-                                            mapFragment.getMapAsync(Home.this);*/
-   /* if(marker == null){
-                        options = new MarkerOptions().position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
-                                .title(array_drivers.get(i).getID_CHOFER().toString()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxirojo));
-                        marker = mMap.addMarker(options);
-                        marker.showInfoWindow();
-                    }else{
-                        marker.setPosition(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())));
-                    }*/
-
-
-
-
-
-

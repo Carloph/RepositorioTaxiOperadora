@@ -10,7 +10,7 @@ public class ListDriver {
 
     private ArrayList<ObjectDriver> ubicaciones = new ArrayList<>();
 
-    public ArrayList<ObjectDriver> getUbicaciones() {
+    public ArrayList<ObjectDriver> getUbicaciones()  {
         return ubicaciones;
     }
 

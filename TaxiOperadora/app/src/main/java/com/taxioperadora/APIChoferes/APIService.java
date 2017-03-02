@@ -17,5 +17,6 @@ public interface APIService {
                               @Field("LATITUD_CLIENTE") double latitud_cliente,
                               @Field("LONGITUD_CLIENTE") double longitud_cliente,
                               @Field("LATITUD_DESTINO") double latitud_destino,
-                              @Field("LONGITUD_DESTINO") double longitud_destino);
+                              @Field("LONGITUD_DESTINO") double longitud_destino,
+                              @Field("MENSAJE") String mensaje);
 }
