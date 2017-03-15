@@ -97,6 +97,9 @@ public class Home extends AppCompatActivity
 
     public TextView tv_distance,tv_time;
 
+    
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -179,10 +182,9 @@ public class Home extends AppCompatActivity
 
         } catch (Exception e) {
 
-            Toast.makeText(getApplication(), "Hubo un error al obtener la ubicación .1 " + e, Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplication(), "Cargando taxis" + e, Toast.LENGTH_LONG).show();
 
         }
-
     }
 
 
@@ -227,11 +229,11 @@ public class Home extends AppCompatActivity
 
                 }else if(array_drivers.get(i).getESTATUS().equals("3")){
 
-                   Marker marker_orange =
+                   Marker marker_blue =
                           mMap.addMarker(new MarkerOptions()
                             .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
-                            .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxinaranja)));
-                    marker_orange.hideInfoWindow();
+                            .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxiblue)));
+                    marker_blue.hideInfoWindow();
 
                 }else if(array_drivers.get(i).getESTATUS().equals("4")){
 
@@ -241,8 +243,16 @@ public class Home extends AppCompatActivity
                                    .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxirojo)));
                     marker_red.hideInfoWindow();
 
+                }else if(array_drivers.get(i).getESTATUS().equals("5")){
+
+                Marker marker_black =
+                        mMap.addMarker(new MarkerOptions()
+                                .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
+                                .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxinegro)));
+                marker_black.hideInfoWindow();
+
                 }else{
-                    Toast.makeText(getApplication(),"No se encontraron taxis",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplication(),"Localizando taxis",Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -278,6 +288,8 @@ public class Home extends AppCompatActivity
                 @Override
                 public void onInfoWindowClick(final Marker marker) {
                     try {
+
+
                         stopTask();
                         AlertDialog.Builder dialog = new AlertDialog.Builder(Home.this);
 
@@ -301,7 +313,6 @@ public class Home extends AppCompatActivity
                                     doTimerTask();
                                 }else{
 
-
                                     int id_driver = Integer.parseInt(marker.getTitle());
 
                                     String [] split_origin =  coordinates_origin.split(",");
@@ -316,15 +327,11 @@ public class Home extends AppCompatActivity
                                     String var02 = split_destination [1];
                                     double destination_lng = Double.parseDouble(var02);
                                     String message = input.getText().toString();
-                                    if (message.equals(null) || message.equals("")){
-                                        Toast.makeText(getApplication(),"Para poder enviar la petición escribe un mensaje al conductor",Toast.LENGTH_LONG).show();
-                                    }else{
-                                        insert_petition(id_driver,origin_lat,origin_lng,destination_lat,destination_lng,message);
-                                        doTimerTask();
-                                    }
+
+                                    insert_petition(id_driver,origin_lat,origin_lng,destination_lat,destination_lng,message);
+                                    doTimerTask();
 
                                 }
-
 
                             }
                         }).setNegativeButton("Cancelar ", new DialogInterface.OnClickListener() {
@@ -503,7 +510,7 @@ public class Home extends AppCompatActivity
 
     public void doTimerTask(){
 
-        mTimerTask = new TimerTask() {
+        this.mTimerTask = new TimerTask() {
             public void run() {
                 handler.post(new Runnable() {
                     public void run() {
@@ -563,17 +570,18 @@ public class Home extends AppCompatActivity
             }};
 
         // public void schedule (TimerTask task, long delay, long period)
-        t.schedule(mTimerTask, 0, 10000);  //
+        this.t.schedule(this.mTimerTask, 0, 10000);  //
 
     }
 
     public void stopTask(){
 
-        if(mTimerTask!=null){
+        if(this.mTimerTask!=null){
 
             Log.e("Se ha cancelado", "la ubicación de los taxis");
 
-            mTimerTask.cancel();
+            this.mTimerTask.cancel();
+            this.mTimerTask =null;
         }
 
     }
@@ -649,7 +657,6 @@ public class Home extends AppCompatActivity
             public void onResponse(Call<MSG> call, Response<MSG> response) {
 
                 Log.d("onResponse", "" + response.body().getMessage());
-
 
                 if(response.body().getSuccess() == 1) {
                     tv_time.setText("0 min");
