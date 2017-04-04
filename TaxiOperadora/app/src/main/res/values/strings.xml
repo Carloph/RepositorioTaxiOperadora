@@ -14,4 +14,5 @@
     <string name="min">0 min</string>
     <string name="km">0 km</string>
     <string name="message">Escribe un mensaje</string>
+    <string name="development">Desarrollado por</string>
 </resources>

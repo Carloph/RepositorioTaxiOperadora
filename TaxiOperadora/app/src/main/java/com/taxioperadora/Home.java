@@ -20,7 +20,6 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -33,6 +32,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.location.LocationListener;
 import android.Manifest;
+
+import com.google.android.gms.common.data.DataBuffer;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -45,6 +46,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+
 import com.taxioperadora.APIChoferes.APIClient;
 import com.taxioperadora.APIChoferes.APIDrivers;
 import com.taxioperadora.APIChoferes.APIService;
@@ -97,10 +99,6 @@ public class Home extends AppCompatActivity
 
     public TextView tv_distance,tv_time;
 
-    
-
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -133,7 +131,6 @@ public class Home extends AppCompatActivity
                  Intent intent_filter =  new Intent(Home.this,DirectionFilter.class);
                  intent_filter.putExtra("CODE",CODE_ORIGIN);
                  startActivityForResult(intent_filter,CODE_ORIGIN);
-                 stopTask();
                 }
         });
 
@@ -170,6 +167,7 @@ public class Home extends AppCompatActivity
                 onLocationChanged(location);
 
             }
+
             locationManager.requestLocationUpdates(bestProvider, 20000, 0, this);
 
             //Hasta aquí
@@ -182,7 +180,7 @@ public class Home extends AppCompatActivity
 
         } catch (Exception e) {
 
-            Toast.makeText(getApplication(), "Cargando taxis" + e, Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplication(), "Cargando taxis" + e, Toast.LENGTH_SHORT).show();
 
         }
     }
@@ -208,10 +206,7 @@ public class Home extends AppCompatActivity
             mMap.clear();
             for (int i= 0;i<array_drivers.size();i++){
 
-                if(array_drivers.get(i).getESTATUS().equals("0")){
-
-                }
-                else if (array_drivers.get(i).getESTATUS().equals("1")){
+               if (array_drivers.get(i).getESTATUS().equals("1")){
 
                   Marker marker_green =
                           mMap.addMarker(new MarkerOptions()
@@ -250,9 +245,6 @@ public class Home extends AppCompatActivity
                                 .position(new LatLng(Double.parseDouble(array_drivers.get(i).getLATITUD()),Double.parseDouble(array_drivers.get(i).getLONGITUD())))
                                 .title(array_drivers.get(i).getID_CHOFER()).icon(BitmapDescriptorFactory.fromResource(R.drawable.taxinegro)));
                 marker_black.hideInfoWindow();
-
-                }else{
-                    Toast.makeText(getApplication(),"Localizando taxis",Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -272,15 +264,17 @@ public class Home extends AppCompatActivity
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-
-                doTimerTask();
-                /*if(btn_origin.getText().toString().equals(R.string.origin) || btn_destination.getText().toString().equals(R.string.destination)){
-
-                }else{
+                if(mTimerTask == null ){
+                    doTimerTask();
+                    tv_time.setText("0 min");
+                    tv_distance.setText("0 km");
                     btn_origin.setText(R.string.origin);
                     btn_destination.setText(R.string.destination);
-                    btn_destination.setEnabled(false);
-                }*/
+                    coordinates_origin = "";
+                    coordinates_destination = "";
+                    Toast.makeText(getApplicationContext(),"Se ha cancelado la ruta",Toast.LENGTH_SHORT).show();
+
+                }
             }
         });
 
@@ -288,7 +282,6 @@ public class Home extends AppCompatActivity
                 @Override
                 public void onInfoWindowClick(final Marker marker) {
                     try {
-
 
                         stopTask();
                         AlertDialog.Builder dialog = new AlertDialog.Builder(Home.this);
@@ -471,7 +464,7 @@ public class Home extends AppCompatActivity
             });
 
         } catch (Exception e) {
-            Toast.makeText(getApplication(), "Hubo un error al obtener la ubicación .2" + e, Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplication(), "Hubo un error al obtener la ubicación .2" + e, Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -485,21 +478,17 @@ public class Home extends AppCompatActivity
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(resultCode!=50){
-
             if(requestCode==CODE_ORIGIN){
-
                 coordinates_origin=data.getExtras().getString("data");
                 String address = data.getExtras().getString("address");
                 btn_origin.setText(address);
                 btn_destination.setEnabled(true);
-
             }
             else if(requestCode == CODE_DESTINATION){
                 coordinates_destination=data.getExtras().getString("data");
                 String address = data.getExtras().getString("address");
                 btn_destination.setText(address);
                 sendRequest(coordinates_origin,coordinates_destination);
-
             }
 
         }else{
@@ -509,6 +498,8 @@ public class Home extends AppCompatActivity
 }
 
     public void doTimerTask(){
+
+        if(this.mTimerTask == null){
 
         this.mTimerTask = new TimerTask() {
             public void run() {
@@ -528,22 +519,15 @@ public class Home extends AppCompatActivity
                             @Override
                             public void onResponse(Call<ListDriver> call, Response<ListDriver> response) {
 
-
-
                                 if(response.isSuccessful()){
 
-
-                                    if(array_drivers.isEmpty() || array_drivers.size()!= response.body().getUbicaciones().size() ){
-                                        array_drivers.clear();
+                                    if(array_drivers.isEmpty()){
                                         array_drivers = response.body().getUbicaciones();
                                         mapFragment.getMapAsync(Home.this);
-                                    }else
-                                    {
-                                        for (int i = 0; i<response.body().getUbicaciones().size();i++){
-                                            array_drivers.get(i).setESTATUS(response.body().getUbicaciones().get(i).getESTATUS());
-                                            array_drivers.get(i).setLATITUD(response.body().getUbicaciones().get(i).getLATITUD());
-                                            array_drivers.get(i).setLONGITUD(response.body().getUbicaciones().get(i).getLONGITUD());
-                                        }
+                                    }else{
+
+                                        array_drivers.clear();
+                                        array_drivers = response.body().getUbicaciones();
                                         mapFragment.getMapAsync(Home.this);
                                     }
 
@@ -552,8 +536,6 @@ public class Home extends AppCompatActivity
                                 }else {
 
                                     Log.e("Hubo un error","al obtener la ubicación de los taxis");
-
-                                    Toast.makeText(getApplication(),"Hubo un error al obtener los datos",Toast.LENGTH_SHORT).show();
 
                                 }
 
@@ -570,7 +552,8 @@ public class Home extends AppCompatActivity
             }};
 
         // public void schedule (TimerTask task, long delay, long period)
-        this.t.schedule(this.mTimerTask, 0, 10000);  //
+        this.t.schedule(this.mTimerTask, 0, 3000);  //
+        }
 
     }
 
@@ -582,13 +565,33 @@ public class Home extends AppCompatActivity
 
             this.mTimerTask.cancel();
             this.mTimerTask =null;
+
         }
 
     }
+
     @Override
-    public void onPause() {
-        super.onPause();  // Always call the superclass method first
+    protected void onPause() {
+        super.onPause();
         stopTask();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stopTask();
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        doTimerTask();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        doTimerTask();
     }
 
     @Override
@@ -656,23 +659,27 @@ public class Home extends AppCompatActivity
             @Override
             public void onResponse(Call<MSG> call, Response<MSG> response) {
 
-                Log.d("onResponse", "" + response.body().getMessage());
 
-                if(response.body().getSuccess() == 1) {
-                    tv_time.setText("0 min");
-                    tv_distance.setText("0 km");
-                    btn_origin.setText(R.string.origin);
-                    btn_destination.setText(R.string.destination);
-                    Log.e("onResponse", "" + "Se ha registrado la solicitud de taxi");
-                    coordinates_origin = "";
-                    coordinates_destination = "";
-                    Toast.makeText(getApplicationContext(),"Se ha asignado el viaje al taxi espere el cambio de color",Toast.LENGTH_SHORT).show();
+
+                if(response.isSuccessful()){
+
+                    if(response.body().getSuccess() == 1) {
+                        tv_time.setText("0 min");
+                        tv_distance.setText("0 km");
+                        btn_origin.setText(R.string.origin);
+                        btn_destination.setText(R.string.destination);
+                        Log.e("onResponse", "" + "Se ha registrado la solicitud de taxi");
+                        coordinates_origin = "";
+                        coordinates_destination = "";
+                        Toast.makeText(getApplicationContext(),"Se ha asignado el viaje al taxi espere el cambio de color",Toast.LENGTH_SHORT).show();
 
                     // startActivity(new Intent(SignupActivity.this, MainActivity.class));
+                    }else {
+                        Toast.makeText(Home.this, "" + response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                        Log.e("onResponse", "" + "Ha habido un error");
+                    }
                 }else {
-                    Toast.makeText(Home.this, "" + response.body().getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("onResponse", "" + "Ha habido un error");
-
+                    Toast.makeText(getApplication(),"Hubo un problema, escoja de nuevo el taxi y envíe el servicio" + response.code(),Toast.LENGTH_SHORT).show();
                 }
             }
 
